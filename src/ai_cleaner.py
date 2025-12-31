@@ -95,10 +95,13 @@ Corrected lyrics:"""
         )
         
         cleaned = response.choices[0].message.content.strip()
+        print(f"AI cleaned '{section_name}': {len(lyrics)} chars -> {len(cleaned)} chars")
         return cleaned
         
     except Exception as e:
-        print(f"AI cleaning error: {e}")
+        print(f"AI cleaning error for {section_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return lyrics  # Return original on error
 
 

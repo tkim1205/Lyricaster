@@ -260,38 +260,54 @@ def main():
                     with col_clean:
                         if AI_AVAILABLE and st.session_state.openai_api_key:
                             if st.button("🤖 Clean & Format", key=f"clean_{filename}"):
-                                client = get_openai_client(st.session_state.openai_api_key)
+                                api_key = st.session_state.openai_api_key
+                                st.info(f"🔑 API Key: {api_key[:10]}...{api_key[-4:]}")
+                                
+                                client = get_openai_client(api_key)
                                 if client:
+                                    st.info("✅ OpenAI client created")
                                     with st.spinner(f"Formatting {song_data['title']}..."):
                                         try:
                                             # Store original for comparison
                                             original = song_data['sections'].copy()
+                                            
+                                            # Debug: show what we're sending
+                                            st.info(f"📤 Sending {len(original)} sections to AI...")
                                             
                                             cleaned = clean_all_sections(
                                                 song_data['title'],
                                                 song_data['sections'],
                                                 client
                                             )
+                                            
+                                            st.info(f"📥 Received {len(cleaned)} sections back")
+                                            
                                             st.session_state.songs[filename]['sections'] = cleaned
                                             st.success("✅ Cleaned & Formatted!")
                                             
-                                            # Show before/after for debugging
-                                            with st.expander("📝 See changes", expanded=True):
+                                            # Show ALL sections (before/after)
+                                            with st.expander("📝 See all results", expanded=True):
+                                                changed_count = 0
                                                 for key in cleaned:
-                                                    if original.get(key) != cleaned.get(key):
-                                                        st.markdown(f"**{key}:**")
-                                                        col_before, col_after = st.columns(2)
-                                                        with col_before:
-                                                            st.markdown("*Before:*")
-                                                            st.text(original.get(key, '')[:500])
-                                                        with col_after:
-                                                            st.markdown("*After:*")
-                                                            st.text(cleaned.get(key, '')[:500])
-                                                        st.divider()
+                                                    changed = original.get(key) != cleaned.get(key)
+                                                    if changed:
+                                                        changed_count += 1
+                                                    st.markdown(f"**{key}:** {'🔄 CHANGED' if changed else '(no change)'}")
+                                                    col_before, col_after = st.columns(2)
+                                                    with col_before:
+                                                        st.markdown("*Before:*")
+                                                        st.text(original.get(key, '')[:500])
+                                                    with col_after:
+                                                        st.markdown("*After:*")
+                                                        st.text(cleaned.get(key, '')[:500])
+                                                    st.divider()
+                                                st.markdown(f"**Total changed: {changed_count}/{len(cleaned)}**")
                                         except Exception as e:
                                             st.error(f"Error: {e}")
                                             import traceback
                                             st.code(traceback.format_exc())
+                                else:
+                                    st.error("❌ Failed to create OpenAI client")
                     
                     # Remove button
                     with col_remove:
