@@ -7,7 +7,7 @@ Generate worship slides from song PDFs with proper formatting for church present
 - **Upload PDFs**: Drag and drop song lyrics PDFs
 - **Auto-detect sections**: Parses Verse, Chorus, Vamp, Bridge, etc.
 - **Custom order**: Define section order like `V1-C-V2-C-Va`
-- **AI Lyrics Cleanup**: Optional OpenAI integration to fix OCR errors
+- **AI Clean & Format**: Optional OpenAI integration to fix OCR errors and format lyrics for easy reading on slides
 - **Smart formatting**:
   - Capitalizes reverent words (He, Him, God, etc.)
   - Splits long sections into multiple slides (max 4 lines)

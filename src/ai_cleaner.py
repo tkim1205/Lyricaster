@@ -19,21 +19,46 @@ def clean_lyrics_with_ai(
     song_title: str,
     section_name: str,
     lyrics: str,
-    client: OpenAI
+    client: OpenAI,
+    format_for_slides: bool = True
 ) -> str:
     """
-    Use GPT-4o-mini to clean up lyrics extracted from PDF.
+    Use GPT-4o-mini to clean up and format lyrics for worship slides.
     
     Args:
         song_title: Name of the song (helps AI identify correct lyrics)
         section_name: Section name (VERSE 1, CHORUS, etc.)
         lyrics: Raw extracted lyrics text
         client: OpenAI client
+        format_for_slides: Whether to also format for slide readability
     
     Returns:
-        Cleaned lyrics text
+        Cleaned and formatted lyrics text
     """
-    prompt = f"""You are a lyrics proofreader. Fix any OCR/extraction errors in these lyrics.
+    if format_for_slides:
+        prompt = f"""You are a worship lyrics formatter. Clean and format these lyrics for projection slides.
+
+Song: "{song_title}"
+Section: {section_name}
+
+Extracted lyrics:
+{lyrics}
+
+Instructions:
+1. Fix any OCR errors (merged words like "Jesuswalked" → "Jesus walked", missing letters like "lled" → "filled")
+2. Fix obvious spelling errors
+3. FORMAT FOR READABILITY on worship slides:
+   - Split repeated phrases onto separate lines (e.g., "Crown Him King forever, crown Him King forever" → two lines)
+   - Each line should be comfortable to read at a glance (aim for 6-10 words max per line)
+   - Keep natural phrase breaks - don't split mid-phrase
+   - Repeated refrains like "Yes Lord, yes Lord, yes yes Lord" should be one phrase per line
+4. Capitalize reverent pronouns: He, Him, His, You, Your (referring to God)
+5. Do NOT change the meaning or wording
+6. Return ONLY the formatted lyrics, nothing else
+
+Formatted lyrics:"""
+    else:
+        prompt = f"""You are a lyrics proofreader. Fix any OCR/extraction errors in these lyrics.
 
 Song: "{song_title}"
 Section: {section_name}

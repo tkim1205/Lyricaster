@@ -137,8 +137,8 @@ def main():
         
         st.divider()
         
-        # OpenAI API for lyrics cleanup
-        st.header("🤖 AI Lyrics Cleanup")
+        # OpenAI API for lyrics cleanup & formatting
+        st.header("🤖 AI Clean & Format")
         if AI_AVAILABLE:
             # Check if key is in secrets first
             secret_key = st.secrets.get("OPENAI_API_KEY", "")
@@ -259,10 +259,10 @@ def main():
                     # AI Clean button
                     with col_clean:
                         if AI_AVAILABLE and st.session_state.openai_api_key:
-                            if st.button("🤖 Clean with AI", key=f"clean_{filename}"):
+                            if st.button("🤖 Clean & Format", key=f"clean_{filename}"):
                                 client = get_openai_client(st.session_state.openai_api_key)
                                 if client:
-                                    with st.spinner(f"Cleaning {song_data['title']}..."):
+                                    with st.spinner(f"Formatting {song_data['title']}..."):
                                         try:
                                             cleaned = clean_all_sections(
                                                 song_data['title'],
