@@ -264,16 +264,34 @@ def main():
                                 if client:
                                     with st.spinner(f"Formatting {song_data['title']}..."):
                                         try:
+                                            # Store original for comparison
+                                            original = song_data['sections'].copy()
+                                            
                                             cleaned = clean_all_sections(
                                                 song_data['title'],
                                                 song_data['sections'],
                                                 client
                                             )
                                             st.session_state.songs[filename]['sections'] = cleaned
-                                            st.success("✅ Cleaned!")
-                                            st.rerun()
+                                            st.success("✅ Cleaned & Formatted!")
+                                            
+                                            # Show before/after for debugging
+                                            with st.expander("📝 See changes", expanded=True):
+                                                for key in cleaned:
+                                                    if original.get(key) != cleaned.get(key):
+                                                        st.markdown(f"**{key}:**")
+                                                        col_before, col_after = st.columns(2)
+                                                        with col_before:
+                                                            st.markdown("*Before:*")
+                                                            st.text(original.get(key, '')[:500])
+                                                        with col_after:
+                                                            st.markdown("*After:*")
+                                                            st.text(cleaned.get(key, '')[:500])
+                                                        st.divider()
                                         except Exception as e:
                                             st.error(f"Error: {e}")
+                                            import traceback
+                                            st.code(traceback.format_exc())
                     
                     # Remove button
                     with col_remove:
