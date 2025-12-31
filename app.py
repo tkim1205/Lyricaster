@@ -140,8 +140,8 @@ def main():
         # OpenAI API for lyrics cleanup & formatting
         st.header("🤖 AI Clean & Format")
         if AI_AVAILABLE:
-            # Check if key is in secrets first
-            secret_key = st.secrets.get("OPENAI_API_KEY", "")
+            # Check if key is in secrets first (support both naming conventions)
+            secret_key = st.secrets.get("OPENAI_API_KEY", "") or st.secrets.get("OPEN_AI_KEY", "")
             if secret_key and not secret_key.startswith("sk-proj-YOUR"):
                 st.session_state.openai_api_key = secret_key
                 st.success("✅ API key loaded from secrets")

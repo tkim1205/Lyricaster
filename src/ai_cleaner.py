@@ -45,16 +45,23 @@ Extracted lyrics:
 {lyrics}
 
 Instructions:
-1. Fix any OCR errors (merged words like "Jesuswalked" → "Jesus walked", missing letters like "lled" → "filled")
-2. Fix obvious spelling errors
-3. FORMAT FOR READABILITY on worship slides:
-   - Split repeated phrases onto separate lines (e.g., "Crown Him King forever, crown Him King forever" → two lines)
-   - Each line should be comfortable to read at a glance (aim for 6-10 words max per line)
+1. FIX OCR/PDF EXTRACTION ERRORS:
+   - Merge incorrectly split words: "kingdom s" → "kingdoms", "for ever" → "forever"
+   - Split merged words: "Jesuswalked" → "Jesus walked"
+   - Fix missing letters from ligatures: "lled" → "filled", "rst" → "first"
+   - Fix obvious spelling errors
+2. FORMAT FOR WORSHIP SLIDES:
+   - Put each repeated phrase on its OWN LINE. Example:
+     "Crown Him King forever, crown Him King forever, crown Him King forevermore"
+     becomes:
+     Crown Him King forever,
+     Crown Him King forever,
+     Crown Him King forevermore
+   - Aim for 6-10 words max per line for easy reading
    - Keep natural phrase breaks - don't split mid-phrase
-   - Repeated refrains like "Yes Lord, yes Lord, yes yes Lord" should be one phrase per line
-4. Capitalize reverent pronouns: He, Him, His, You, Your (referring to God)
-5. Do NOT change the meaning or wording
-6. Return ONLY the formatted lyrics, nothing else
+3. Capitalize reverent pronouns: He, Him, His, You, Your (when referring to God)
+4. Do NOT change the meaning or actual words
+5. Return ONLY the formatted lyrics, no explanations
 
 Formatted lyrics:"""
     else:
