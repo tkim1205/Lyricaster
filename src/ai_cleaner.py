@@ -36,20 +36,21 @@ def clean_lyrics_with_ai(
         Cleaned and formatted lyrics text
     """
     if format_for_slides:
-        prompt = f"""You are a worship lyrics formatter. Clean and format these lyrics for projection slides.
+        prompt = f"""You are a worship lyrics expert. Clean, correct, and format these lyrics for projection slides.
 
 Song: "{song_title}"
 Section: {section_name}
 
-Extracted lyrics:
+Extracted lyrics (may have errors from PDF extraction):
 {lyrics}
 
 Instructions:
-1. FIX OCR/PDF EXTRACTION ERRORS:
-   - Merge incorrectly split words: "kingdom s" → "kingdoms", "for ever" → "forever"
-   - Split merged words: "Jesuswalked" → "Jesus walked"
-   - Fix missing letters from ligatures: "lled" → "filled", "rst" → "first"
-   - Fix obvious spelling errors
+1. VERIFY & CORRECT LYRICS:
+   - You know the actual lyrics to this song - fix any extraction errors
+   - Restore missing lines or words that were dropped during PDF extraction
+   - Fix garbled/mangled phrases (e.g., "Forever reign as King, Forevermore" should be "To reign as King forever, reign as King forever, reign as King forevermore")
+   - Fix merged or split words
+   
 2. FORMAT FOR WORSHIP SLIDES:
    - Put each repeated phrase on its OWN LINE. Example:
      "Crown Him King forever, crown Him King forever, crown Him King forevermore"
@@ -58,12 +59,13 @@ Instructions:
      Crown Him King forever,
      Crown Him King forevermore
    - Aim for 6-10 words max per line for easy reading
-   - Keep natural phrase breaks - don't split mid-phrase
-3. Capitalize reverent pronouns: He, Him, His, You, Your (when referring to God)
-4. Do NOT change the meaning or actual words
-5. Return ONLY the formatted lyrics, no explanations
+   - Keep natural phrase breaks
+   
+3. Capitalize reverent pronouns: He, Him, His, You, Your (referring to God)
 
-Formatted lyrics:"""
+4. Return ONLY the corrected and formatted lyrics, no explanations
+
+Corrected lyrics:"""
     else:
         prompt = f"""You are a lyrics proofreader. Fix any OCR/extraction errors in these lyrics.
 
