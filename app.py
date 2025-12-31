@@ -278,8 +278,8 @@ def main():
                     # Remove button
                     with col_remove:
                         if st.button("🗑️ Remove", key=f"remove_{filename}"):
-                        del st.session_state.songs[filename]
-                        st.rerun()
+                            del st.session_state.songs[filename]
+                            st.rerun()
     
     with col2:
         st.header("👁️ Preview & Generate")
