@@ -164,20 +164,51 @@ def format_song_for_slides(
     all_slides = []
     
     for section_key in order:
-        # Find the section (handle variations like 'V' matching 'V1')
+        # Find the section (handle variations like 'V' matching 'V1', 'C' matching 'C1A')
         section_text = None
         matched_key = section_key
         
-        if section_key in sections:
-            section_text = sections[section_key]
+        # Normalize the search key
+        search_key = section_key.upper().strip()
+        
+        # Get the base type for matching (C, V, Va, B, etc.)
+        if search_key.startswith('VA'):
+            search_base = 'VA'
         else:
-            # Try to find a match
+            search_base = search_key.rstrip('0123456789AB')
+        
+        # Exact match first
+        if search_key in sections:
+            section_text = sections[search_key]
+            matched_key = search_key
+        else:
+            # Find first matching section by type
+            # If order says "C" and we have "C1", use "C1"
+            # If order says "C" multiple times and we only have one chorus, reuse it
+            candidates = []
             for key in sections:
-                key_base = key.rstrip('0123456789')
-                if section_key == key_base or section_key.rstrip('0123456789') == key_base:
-                    section_text = sections[key]
-                    matched_key = key
-                    break
+                key_upper = key.upper()
+                if key_upper.startswith('VA'):
+                    key_base = 'VA'
+                else:
+                    key_base = key_upper.rstrip('0123456789AB')
+                
+                # Match if same base type
+                if search_base == key_base:
+                    candidates.append(key)
+            
+            # Pick the first/best match
+            if candidates:
+                # If exact number match exists, use it (e.g., V2 -> V2)
+                for c in candidates:
+                    if c.upper() == search_key:
+                        matched_key = c
+                        section_text = sections[c]
+                        break
+                # Otherwise use first candidate (e.g., C -> C1)
+                if not section_text:
+                    matched_key = candidates[0]
+                    section_text = sections[matched_key]
         
         if section_text:
             display_name = get_display_name_func(matched_key)

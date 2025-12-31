@@ -9,6 +9,7 @@ Formatting specs:
 """
 
 import os
+from datetime import datetime
 from typing import List, Tuple, Optional
 
 from google.oauth2.credentials import Credentials
@@ -17,8 +18,14 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Google Slides API scope
-SCOPES = ['https://www.googleapis.com/auth/presentations']
+# Google Slides API scope + Drive for moving files
+SCOPES = [
+    'https://www.googleapis.com/auth/presentations',
+    'https://www.googleapis.com/auth/drive.file'
+]
+
+# Default folder ID for saving presentations
+DEFAULT_FOLDER_ID = '1KdrZ4MvpyJziT74aAtWkWcKOgtVClpLh'
 
 # Slide dimensions (in EMU - English Metric Units, 914400 EMU = 1 inch)
 # Standard 16:9 slide: 10 inches x 5.625 inches
@@ -84,7 +91,7 @@ def create_presentation(title: str, creds: Credentials) -> str:
 
 def add_song_slides(
     presentation_id: str,
-    slides_data: List[Tuple[str, str]],
+    slides_data: List[Tuple[str, str, str]],
     creds: Credentials
 ) -> None:
     """
@@ -92,17 +99,25 @@ def add_song_slides(
     
     Args:
         presentation_id: The Google Slides presentation ID
-        slides_data: List of (title, body) tuples
+        slides_data: List of (title, body, footer) tuples
         creds: Google API credentials
     """
     service = build('slides', 'v1', credentials=creds)
     
     requests = []
     
-    for i, (title, body) in enumerate(slides_data):
+    for i, slide_tuple in enumerate(slides_data):
+        # Handle both (title, body) and (title, body, footer) formats
+        if len(slide_tuple) == 3:
+            title, body, footer = slide_tuple
+        else:
+            title, body = slide_tuple
+            footer = ''
+        
         slide_id = f'slide_{i}'
         title_id = f'title_{i}'
         body_id = f'body_{i}'
+        footer_id = f'footer_{i}'
         
         # Create slide
         requests.append({
@@ -132,132 +147,205 @@ def add_song_slides(
             }
         })
         
-        # Create title text box
-        requests.append({
-            'createShape': {
-                'objectId': title_id,
-                'shapeType': 'TEXT_BOX',
-                'elementProperties': {
-                    'pageObjectId': slide_id,
-                    'size': {
-                        'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
-                        'height': {'magnitude': 800000, 'unit': 'EMU'}
-                    },
-                    'transform': {
-                        'scaleX': 1,
-                        'scaleY': 1,
-                        'translateX': 200000,
-                        'translateY': 300000,
-                        'unit': 'EMU'
+        # Only create title text box if there's title text
+        if title and title.strip():
+            # For title-only slides (no body), center vertically
+            is_title_only = not (body and body.strip())
+            title_y = (SLIDE_HEIGHT - 800000) // 2 if is_title_only else 300000
+            
+            # Create title text box
+            requests.append({
+                'createShape': {
+                    'objectId': title_id,
+                    'shapeType': 'TEXT_BOX',
+                    'elementProperties': {
+                        'pageObjectId': slide_id,
+                        'size': {
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
+                            'height': {'magnitude': 800000, 'unit': 'EMU'}
+                        },
+                        'transform': {
+                            'scaleX': 1,
+                            'scaleY': 1,
+                            'translateX': 200000,
+                            'translateY': title_y,
+                            'unit': 'EMU'
+                        }
                     }
                 }
-            }
-        })
-        
-        # Insert title text (UPPERCASE)
-        requests.append({
-            'insertText': {
-                'objectId': title_id,
-                'text': title.upper(),
-                'insertionIndex': 0
-            }
-        })
-        
-        # Style title: Calibri 40pt, #4a86e8, underlined, centered
-        requests.append({
-            'updateTextStyle': {
-                'objectId': title_id,
-                'style': {
-                    'fontFamily': FONT_FAMILY,
-                    'fontSize': {
-                        'magnitude': FONT_SIZE_PT,
-                        'unit': 'PT'
+            })
+            
+            # Insert title text (UPPERCASE)
+            requests.append({
+                'insertText': {
+                    'objectId': title_id,
+                    'text': title.upper(),
+                    'insertionIndex': 0
+                }
+            })
+            
+            # Style title: Calibri 40pt, #4a86e8, underlined, centered
+            requests.append({
+                'updateTextStyle': {
+                    'objectId': title_id,
+                    'style': {
+                        'fontFamily': FONT_FAMILY,
+                        'fontSize': {
+                            'magnitude': FONT_SIZE_PT,
+                            'unit': 'PT'
+                        },
+                        'foregroundColor': {
+                            'opaqueColor': {
+                                'rgbColor': TITLE_COLOR_RGB
+                            }
+                        },
+                        'underline': True,
+                        'bold': False
                     },
-                    'foregroundColor': {
-                        'opaqueColor': {
-                            'rgbColor': TITLE_COLOR_RGB
+                    'fields': 'fontFamily,fontSize,foregroundColor,underline,bold'
+                }
+            })
+            
+            # Center title
+            requests.append({
+                'updateParagraphStyle': {
+                    'objectId': title_id,
+                    'style': {
+                        'alignment': 'CENTER'
+                    },
+                    'fields': 'alignment'
+                }
+            })
+        
+        # Only create body text box if there's body text
+        if body and body.strip():
+            # Create body text box
+            requests.append({
+                'createShape': {
+                    'objectId': body_id,
+                    'shapeType': 'TEXT_BOX',
+                    'elementProperties': {
+                        'pageObjectId': slide_id,
+                        'size': {
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
+                            'height': {'magnitude': 3500000, 'unit': 'EMU'}
+                        },
+                        'transform': {
+                            'scaleX': 1,
+                            'scaleY': 1,
+                            'translateX': 200000,
+                            'translateY': 1200000,
+                            'unit': 'EMU'
                         }
-                    },
-                    'underline': True,
-                    'bold': False
-                },
-                'fields': 'fontFamily,fontSize,foregroundColor,underline,bold'
-            }
-        })
-        
-        # Center title
-        requests.append({
-            'updateParagraphStyle': {
-                'objectId': title_id,
-                'style': {
-                    'alignment': 'CENTER'
-                },
-                'fields': 'alignment'
-            }
-        })
-        
-        # Create body text box
-        requests.append({
-            'createShape': {
-                'objectId': body_id,
-                'shapeType': 'TEXT_BOX',
-                'elementProperties': {
-                    'pageObjectId': slide_id,
-                    'size': {
-                        'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
-                        'height': {'magnitude': 3500000, 'unit': 'EMU'}
-                    },
-                    'transform': {
-                        'scaleX': 1,
-                        'scaleY': 1,
-                        'translateX': 200000,
-                        'translateY': 1200000,
-                        'unit': 'EMU'
                     }
                 }
-            }
-        })
-        
-        # Insert body text
-        requests.append({
-            'insertText': {
-                'objectId': body_id,
-                'text': body,
-                'insertionIndex': 0
-            }
-        })
-        
-        # Style body: Calibri 40pt, white, centered
-        requests.append({
-            'updateTextStyle': {
-                'objectId': body_id,
-                'style': {
-                    'fontFamily': FONT_FAMILY,
-                    'fontSize': {
-                        'magnitude': FONT_SIZE_PT,
-                        'unit': 'PT'
+            })
+            
+            # Insert body text
+            requests.append({
+                'insertText': {
+                    'objectId': body_id,
+                    'text': body,
+                    'insertionIndex': 0
+                }
+            })
+            
+            # Style body: Calibri 40pt, white, centered
+            requests.append({
+                'updateTextStyle': {
+                    'objectId': body_id,
+                    'style': {
+                        'fontFamily': FONT_FAMILY,
+                        'fontSize': {
+                            'magnitude': FONT_SIZE_PT,
+                            'unit': 'PT'
+                        },
+                        'foregroundColor': {
+                            'opaqueColor': {
+                                'rgbColor': WHITE_RGB
+                            }
+                        },
+                        'bold': False
                     },
-                    'foregroundColor': {
-                        'opaqueColor': {
-                            'rgbColor': WHITE_RGB
+                    'fields': 'fontFamily,fontSize,foregroundColor,bold'
+                }
+            })
+            
+            # Center body
+            requests.append({
+                'updateParagraphStyle': {
+                    'objectId': body_id,
+                    'style': {
+                        'alignment': 'CENTER'
+                    },
+                    'fields': 'alignment'
+                }
+            })
+        
+        # Add footer (song title) - bottom right, italic, blue
+        if footer and footer.strip():
+            # Create footer text box
+            requests.append({
+                'createShape': {
+                    'objectId': footer_id,
+                    'shapeType': 'TEXT_BOX',
+                    'elementProperties': {
+                        'pageObjectId': slide_id,
+                        'size': {
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
+                            'height': {'magnitude': 400000, 'unit': 'EMU'}
+                        },
+                        'transform': {
+                            'scaleX': 1,
+                            'scaleY': 1,
+                            'translateX': 200000,
+                            'translateY': SLIDE_HEIGHT - 500000,  # Near bottom
+                            'unit': 'EMU'
                         }
+                    }
+                }
+            })
+            
+            # Insert footer text
+            requests.append({
+                'insertText': {
+                    'objectId': footer_id,
+                    'text': footer,
+                    'insertionIndex': 0
+                }
+            })
+            
+            # Style footer: Calibri 20pt, blue, italic
+            requests.append({
+                'updateTextStyle': {
+                    'objectId': footer_id,
+                    'style': {
+                        'fontFamily': FONT_FAMILY,
+                        'fontSize': {
+                            'magnitude': 20,
+                            'unit': 'PT'
+                        },
+                        'foregroundColor': {
+                            'opaqueColor': {
+                                'rgbColor': TITLE_COLOR_RGB
+                            }
+                        },
+                        'italic': True
                     },
-                    'bold': False
-                },
-                'fields': 'fontFamily,fontSize,foregroundColor,bold'
-            }
-        })
-        
-        # Center body
-        requests.append({
-            'updateParagraphStyle': {
-                'objectId': body_id,
-                'style': {
-                    'alignment': 'CENTER'
-                },
-                'fields': 'alignment'
-            }
-        })
+                    'fields': 'fontFamily,fontSize,foregroundColor,italic'
+                }
+            })
+            
+            # Right-align footer
+            requests.append({
+                'updateParagraphStyle': {
+                    'objectId': footer_id,
+                    'style': {
+                        'alignment': 'END'  # Right align
+                    },
+                    'fields': 'alignment'
+                }
+            })
     
     # Execute all requests
     if requests:
@@ -290,25 +378,54 @@ def delete_default_slide(presentation_id: str, creds: Credentials) -> None:
         ).execute()
 
 
+def move_to_folder(file_id: str, folder_id: str, creds: Credentials) -> None:
+    """Move a file to a specific Google Drive folder."""
+    drive_service = build('drive', 'v3', credentials=creds)
+    
+    # Get current parents
+    file = drive_service.files().get(fileId=file_id, fields='parents').execute()
+    previous_parents = ",".join(file.get('parents', []))
+    
+    # Move to new folder
+    drive_service.files().update(
+        fileId=file_id,
+        addParents=folder_id,
+        removeParents=previous_parents,
+        fields='id, parents'
+    ).execute()
+
+
+def get_default_title() -> str:
+    """Generate default presentation title with timestamp."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return f"Lyricaster - {timestamp}"
+
+
 def generate_slides(
-    presentation_title: str,
+    presentation_title: Optional[str],
     slides_data: List[Tuple[str, str]],
     credentials_path: str = 'credentials.json',
-    token_path: str = 'token.json'
+    token_path: str = 'token.json',
+    folder_id: str = DEFAULT_FOLDER_ID
 ) -> str:
     """
     Main function to generate a Google Slides presentation.
     
     Args:
-        presentation_title: Title for the presentation
-        slides_data: List of (title, body) tuples
+        presentation_title: Title for the presentation (None for auto-generated)
+        slides_data: List of (title, body) or (title, body, footer) tuples
         credentials_path: Path to OAuth credentials JSON
         token_path: Path to save/load token
+        folder_id: Google Drive folder ID to save to
     
     Returns:
         URL to the created presentation
     """
     creds = get_credentials(credentials_path, token_path)
+    
+    # Use default title if not provided
+    if not presentation_title:
+        presentation_title = get_default_title()
     
     # Create presentation
     presentation_id = create_presentation(presentation_title, creds)
@@ -318,6 +435,17 @@ def generate_slides(
     
     # Add our slides
     add_song_slides(presentation_id, slides_data, creds)
+    
+    # Move to folder
+    if folder_id:
+        try:
+            move_to_folder(presentation_id, folder_id, creds)
+            print(f"Moved presentation to folder: {folder_id}")
+        except Exception as e:
+            # Log error but don't fail - presentation was still created
+            print(f"Warning: Could not move to folder {folder_id}: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Return the URL
     return f"https://docs.google.com/presentation/d/{presentation_id}/edit"

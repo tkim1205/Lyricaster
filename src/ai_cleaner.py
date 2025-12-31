@@ -36,36 +36,36 @@ def clean_lyrics_with_ai(
         Cleaned and formatted lyrics text
     """
     if format_for_slides:
-        prompt = f"""You are a worship lyrics expert. Clean, correct, and format these lyrics for projection slides.
+        prompt = f"""You are a worship lyrics proofreader. Fix typos and adjust spacing for projection slides.
 
 Song: "{song_title}"
 Section: {section_name}
 
-Extracted lyrics (may have errors from PDF extraction):
+Extracted lyrics:
 {lyrics}
 
-Instructions:
-1. VERIFY & CORRECT LYRICS:
-   - You know the actual lyrics to this song - fix any extraction errors
-   - Restore missing lines or words that were dropped during PDF extraction
-   - Fix garbled/mangled phrases (e.g., "Forever reign as King, Forevermore" should be "To reign as King forever, reign as King forever, reign as King forevermore")
-   - Fix merged or split words
-   
-2. FORMAT FOR WORSHIP SLIDES:
-   - Put each repeated phrase on its OWN LINE. Example:
+STRICT RULES:
+1. DO NOT add new words or remove existing words
+2. DO NOT change the meaning or rewrite lyrics
+3. ONLY fix these issues:
+   - Typos and spelling errors (e.g., "kingdom s" → "kingdoms")
+   - Merged words (e.g., "Jesuswalked" → "Jesus walked")
+   - Split words (e.g., "for ever" → "forever")
+   - Missing spaces or extra spaces
+
+4. FORMAT for readability (max 4 slides worth, consolidate lines):
+   - Keep lines readable but CONSOLIDATED (don't over-split)
+   - Short repeated phrases can stay on ONE line:
+     GOOD: "Yes Lord, yes Lord, yes yes Lord"
+     BAD: splitting into 3+ separate lines
+   - Longer repeated phrases split into 2-3 lines max:
      "Crown Him King forever, crown Him King forever, crown Him King forevermore"
-     becomes:
-     Crown Him King forever,
-     Crown Him King forever,
-     Crown Him King forevermore
-   - Aim for 6-10 words max per line for easy reading
-   - Keep natural phrase breaks
-   
-3. Capitalize reverent pronouns: He, Him, His, You, Your (referring to God)
+     becomes 2-3 lines, not more
+   - Aim for 8-12 words per line when possible
 
-4. Return ONLY the corrected and formatted lyrics, no explanations
+5. Capitalize reverent pronouns: He, Him, His, You, Your (referring to God)
 
-Corrected lyrics:"""
+Return ONLY the cleaned lyrics:"""
     else:
         prompt = f"""You are a lyrics proofreader. Fix any OCR/extraction errors in these lyrics.
 

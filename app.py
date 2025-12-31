@@ -64,6 +64,8 @@ st.markdown("""
         margin: 10px 0;
         border-radius: 8px;
         text-align: center;
+        position: relative;
+        min-height: 200px;
     }
     .preview-title {
         color: #4a86e8;
@@ -75,6 +77,16 @@ st.markdown("""
         color: white;
         font-size: 20px;
         white-space: pre-wrap;
+    }
+    .preview-footer {
+        color: #4a86e8;
+        font-size: 14px;
+        font-style: italic;
+        text-align: right;
+        margin-top: 20px;
+        position: absolute;
+        bottom: 10px;
+        right: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -119,21 +131,35 @@ def main():
             "Song Order",
             placeholder="Psalm 90: V1-V2-C-V3-C\nTrading My Sorrows: C-Va-C-Va-V",
             height=150,
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="bulk_order_text"
         )
         
         if st.button("Apply Bulk Order"):
             if bulk_order:
+                # Parse bulk order and reorder songs
+                ordered_songs = {}
+                unmatched_songs = dict(st.session_state.songs)  # Copy of all songs
+                
                 for line in bulk_order.strip().split('\n'):
                     song_name, order = parse_song_order_line(line)
                     if song_name and order:
                         # Find matching song in uploaded songs
-                        for filename, song_data in st.session_state.songs.items():
+                        for filename, song_data in list(unmatched_songs.items()):
                             if song_name.lower() in song_data['title'].lower() or \
                                song_data['title'].lower() in song_name.lower():
-                                st.session_state.songs[filename]['order'] = order
+                                song_data['order'] = order
+                                ordered_songs[filename] = song_data
+                                del unmatched_songs[filename]
                                 st.success(f"Applied order to: {song_data['title']}")
                                 break
+                
+                # Add any remaining unmatched songs at the end
+                ordered_songs.update(unmatched_songs)
+                
+                # Update session state with reordered songs
+                st.session_state.songs = ordered_songs
+                st.rerun()
         
         st.divider()
         
@@ -186,6 +212,16 @@ def main():
     with col1:
         st.header("📤 Upload Songs")
         
+        # Hide file uploader's file list with CSS when we have songs
+        if st.session_state.songs:
+            st.markdown("""
+            <style>
+            [data-testid="stFileUploader"] > div > div:nth-child(2) {
+                display: none;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+        
         uploaded_files = st.file_uploader(
             "Upload PDF files",
             type=['pdf'],
@@ -219,6 +255,12 @@ def main():
                         # Clean up temp file
                         if os.path.exists(tmp_path):
                             os.unlink(tmp_path)
+        
+        # Show all uploaded songs summary
+        if st.session_state.songs:
+            st.success(f"**📚 {len(st.session_state.songs)} song(s) loaded:**")
+            for i, (filename, song_data) in enumerate(st.session_state.songs.items(), 1):
+                st.markdown(f"&nbsp;&nbsp;&nbsp;{i}. {song_data['title']}")
         
         # Display uploaded songs
         if st.session_state.songs:
@@ -323,18 +365,26 @@ def main():
             if st.button("🔄 Generate Preview", type="primary"):
                 all_slides = []
                 
-                for filename, song_data in st.session_state.songs.items():
-                    # Add song title slide
-                    all_slides.append((song_data['title'].upper(), ""))
+                for idx, (filename, song_data) in enumerate(st.session_state.songs.items()):
+                    song_title = song_data['title']
                     
-                    # Add song slides
+                    # Add separator slide between songs (black slide)
+                    if idx > 0:
+                        all_slides.append(("", "", ""))  # Empty slide as separator
+                    
+                    # Add song title slide
+                    all_slides.append((song_title.upper(), "", ""))
+                    
+                    # Add song slides with footer
                     song_slides = format_song_for_slides(
                         song_data['sections'],
                         song_data['order'],
                         get_display_name,
                         max_lines
                     )
-                    all_slides.extend(song_slides)
+                    # Add song title as footer to each slide
+                    for title, body in song_slides:
+                        all_slides.append((title, body, song_title))
                 
                 st.session_state.slides_preview = all_slides
             
@@ -350,13 +400,21 @@ def main():
                     value=0
                 )
                 
-                title, body = st.session_state.slides_preview[slide_idx]
+                slide_data = st.session_state.slides_preview[slide_idx]
+                # Handle both (title, body) and (title, body, footer) formats
+                if len(slide_data) == 3:
+                    title, body, footer = slide_data
+                else:
+                    title, body = slide_data
+                    footer = ""
                 
                 # Preview container
+                footer_html = f'<div class="preview-footer">{footer}</div>' if footer else ''
                 st.markdown(f"""
                 <div class="preview-slide">
                     <div class="preview-title">{title}</div>
                     <div class="preview-body">{body}</div>
+                    {footer_html}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -366,25 +424,114 @@ def main():
                 
                 # Generate to Google Slides
                 if GOOGLE_API_AVAILABLE and os.path.exists('credentials.json'):
+                    from datetime import datetime
+                    default_title = f"Lyricaster - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
                     presentation_title = st.text_input(
                         "Presentation Title",
-                        value="Worship Songs",
+                        value=default_title,
                         key="presentation_title"
                     )
                     
-                    if st.button("🚀 Generate Google Slides", type="primary"):
-                        with st.spinner("Creating presentation..."):
-                            try:
-                                url = generate_slides(
-                                    presentation_title,
-                                    st.session_state.slides_preview
-                                )
-                                st.session_state.generated_url = url
-                                st.success("✅ Presentation created!")
-                            except FileNotFoundError as e:
-                                st.error(str(e))
-                            except Exception as e:
-                                st.error(f"Error: {e}")
+                    col_normal, col_oneclick = st.columns(2)
+                    
+                    with col_normal:
+                        if st.button("🚀 Generate Google Slides", type="primary"):
+                            with st.spinner("Creating presentation..."):
+                                try:
+                                    url = generate_slides(
+                                        presentation_title,
+                                        st.session_state.slides_preview
+                                    )
+                                    st.session_state.generated_url = url
+                                    st.success("✅ Presentation created!")
+                                except FileNotFoundError as e:
+                                    st.error(str(e))
+                                except Exception as e:
+                                    st.error(f"Error: {e}")
+                    
+                    with col_oneclick:
+                        # One-click button: AI clean + generate slides
+                        if AI_AVAILABLE and st.session_state.openai_api_key:
+                            # Custom orange button style
+                            st.markdown("""
+                            <style>
+                            div[data-testid="stButton"] button[kind="secondary"] {
+                                background-color: #ff6b35;
+                                color: white;
+                                border: none;
+                            }
+                            div[data-testid="stButton"] button[kind="secondary"]:hover {
+                                background-color: #ff8c5a;
+                                color: white;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            if st.button("⚡ One-Click: AI + Slides", type="secondary"):
+                                # Step 1: Apply bulk order if provided
+                                if 'bulk_order_text' in st.session_state and st.session_state.bulk_order_text:
+                                    with st.spinner("📋 Applying song order..."):
+                                        ordered_songs = {}
+                                        unmatched_songs = dict(st.session_state.songs)
+                                        
+                                        for line in st.session_state.bulk_order_text.strip().split('\n'):
+                                            song_name, order = parse_song_order_line(line)
+                                            if song_name and order:
+                                                for filename, song_data in list(unmatched_songs.items()):
+                                                    if song_name.lower() in song_data['title'].lower() or \
+                                                       song_data['title'].lower() in song_name.lower():
+                                                        song_data['order'] = order
+                                                        ordered_songs[filename] = song_data
+                                                        del unmatched_songs[filename]
+                                                        break
+                                        
+                                        ordered_songs.update(unmatched_songs)
+                                        st.session_state.songs = ordered_songs
+                                
+                                # Step 2: AI cleanup
+                                with st.spinner("🤖 Cleaning lyrics with AI..."):
+                                    client = get_openai_client(st.session_state.openai_api_key)
+                                    if client:
+                                        # Clean all songs
+                                        for filename, song_data in st.session_state.songs.items():
+                                            try:
+                                                cleaned = clean_all_sections(
+                                                    song_data['title'],
+                                                    song_data['sections'],
+                                                    client
+                                                )
+                                                st.session_state.songs[filename]['sections'] = cleaned
+                                            except Exception as e:
+                                                st.warning(f"AI cleanup failed for {song_data['title']}: {e}")
+                                
+                                with st.spinner("📊 Generating slides..."):
+                                    # Regenerate preview with cleaned lyrics
+                                    all_slides = []
+                                    for idx, (filename, song_data) in enumerate(st.session_state.songs.items()):
+                                        song_title = song_data['title']
+                                        if idx > 0:
+                                            all_slides.append(("", "", ""))
+                                        all_slides.append((song_title.upper(), "", ""))
+                                        song_slides = format_song_for_slides(
+                                            song_data['sections'],
+                                            song_data['order'],
+                                            get_display_name,
+                                            max_lines
+                                        )
+                                        for title, body in song_slides:
+                                            all_slides.append((title, body, song_title))
+                                    st.session_state.slides_preview = all_slides
+                                
+                                with st.spinner("🚀 Creating Google Slides..."):
+                                    try:
+                                        url = generate_slides(
+                                            presentation_title,
+                                            st.session_state.slides_preview
+                                        )
+                                        st.session_state.generated_url = url
+                                        st.success("✅ Done! AI cleaned + Slides created!")
+                                    except Exception as e:
+                                        st.error(f"Error: {e}")
                     
                     if st.session_state.generated_url:
                         st.markdown(f"[📎 Open Presentation]({st.session_state.generated_url})")
