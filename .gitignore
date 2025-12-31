@@ -6,7 +6,8 @@ __pycache__/
 venv/
 .env
 
-# Google API credentials (keep credentials.json in .gitignore for security)
+# Google API credentials (keep these secret!)
+credentials.json
 token.json
 
 # Streamlit secrets (contains API keys)
