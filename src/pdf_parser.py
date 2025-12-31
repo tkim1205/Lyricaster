@@ -45,7 +45,8 @@ def normalize_section_key(section_type: str, section_num: str = '') -> str:
 def get_display_name(section_key: str) -> str:
     """Convert section key to display name for slide titles."""
     # Match patterns like V1, C, C1A, C1B, Va, etc.
-    match = re.match(r'^(V|C|B|Va|PC|Tag)(\d*[AB]?)$', section_key, re.IGNORECASE)
+    # Note: Va must come before V in alternation to match correctly
+    match = re.match(r'^(Va|PC|Tag|V|C|B)(\d*[AB]?)$', section_key, re.IGNORECASE)
     if not match:
         return section_key.upper()
     
