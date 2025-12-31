@@ -18,7 +18,7 @@ IGNORED_SECTIONS = {'INSTRUMENTAL', 'INTERLUDE', 'INTRO', 'OUTRO', 'ENDING', 'TU
 NAVIGATION_PATTERNS = [
     r'\(To\s+\w+.*?\)',  # (To Turnaround), (To Instrumental), (To Chorus 1b)
     r'\(\d+\.\)',  # (1.), (2.), (3.)
-    r'^To\s+\w+',  # To Turnaround, To Instrumental
+    r'^To\s+(Turnaround|Instrumental|Chorus|Verse|Bridge|Vamp|Coda|Intro|Outro|Ending|Tag)\b',  # Navigation markers only
     r'Grace Praise',  # Publisher credit
     r'Praise Charts',  # Publisher credit
 ]
