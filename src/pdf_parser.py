@@ -46,7 +46,7 @@ def get_display_name(section_key: str) -> str:
     """Convert section key to display name for slide titles."""
     # Match patterns like V1, C, C1A, C1B, Va, etc.
     # Note: Va must come before V in alternation to match correctly
-    match = re.match(r'^(Va|PC|Tag|V|C|B)(\d*[AB]?)$', section_key, re.IGNORECASE)
+    match = re.match(r'^(Va|PC|Tag|V|C|B)(\d*[A-Z]?)$', section_key, re.IGNORECASE)
     if not match:
         return section_key.upper()
     
@@ -152,7 +152,7 @@ def is_section_header(line: str) -> Optional[Tuple[str, str]]:
     line_stripped = line.strip()
     
     # Handle [Verse 1] format
-    bracket_match = re.match(r'^\[(?P<type>Verse|Chorus|Vamp|Bridge|Pre-Chorus|Tag)\s*(?P<num>\d*[AB]?)\]', 
+    bracket_match = re.match(r'^\[(?P<type>Verse|Chorus|Vamp|Bridge|Pre-Chorus|Tag)\s*(?P<num>\d*[A-Z]?)\]', 
                               line_stripped, re.IGNORECASE)
     if bracket_match:
         return (bracket_match.group('type').upper(), bracket_match.group('num'))
@@ -163,7 +163,7 @@ def is_section_header(line: str) -> Optional[Tuple[str, str]]:
         if line_upper == section:
             return (section, '')
         # Match "CHORUS 1A", "VERSE 2", etc.
-        match = re.match(rf'^{section}\s*(\d*[AB]?)$', line_upper)
+        match = re.match(rf'^{section}\s*(\d*[A-Z]?)$', line_upper)
         if match:
             return (section, match.group(1))
     
@@ -435,14 +435,31 @@ def parse_pdf(pdf_path: str) -> Dict[str, str]:
 
 
 def get_song_title_from_filename(filename: str) -> str:
-    """Extract song title from filename, removing number prefix and key suffix."""
+    """Extract song title from filename, removing number prefix, key suffix, and extra notes."""
     import os
     name = os.path.splitext(os.path.basename(filename))[0]
     
-    # Remove leading number and dot
+    # Remove leading number and dot (e.g., "1. Song Name" -> "Song Name")
     name = re.sub(r'^\d+\.\s*', '', name)
     
-    # Remove key suffix
+    # Remove "-chords-X" and everything after (e.g., "Song-chords-D" or "Song-chords-F (2)" -> "Song")
+    name = re.sub(r'-chords-[A-G][#b]?.*$', '', name, flags=re.IGNORECASE)
+    
+    # Remove trailing version numbers like (1), (2), etc.
+    name = re.sub(r'\s*\(\d+\)\s*$', '', name)
+    
+    # Remove parenthetical alternate titles/attributions at the end
+    # e.g., "Rock Of Ages (Toplady)" -> "Rock Of Ages"
+    # e.g., "Victory In Jesus (Christ Won The Victory)" -> "Victory In Jesus"
+    name = re.sub(r'\s*\([^)]+\)\s*$', '', name)
+    
+    # Remove "-X" key suffix at end (e.g., "Song - D" or "Song-D" -> "Song")
     name = re.sub(r'\s*-\s*[A-G][#b]?(?:~[A-G][#b]?)?\s*$', '', name)
+    
+    # Remove trailing " - Key" patterns (e.g., "Song - Key of D" -> "Song")
+    name = re.sub(r'\s*-\s*(?:key\s+(?:of\s+)?)?[A-G][#b]?(?:m|maj|min)?\s*$', '', name, flags=re.IGNORECASE)
+    
+    # Clean up any double spaces
+    name = re.sub(r'\s{2,}', ' ', name)
     
     return name.strip()

@@ -6,6 +6,7 @@ with proper formatting for church worship.
 """
 
 import os
+import re
 import tempfile
 import streamlit as st
 from typing import Dict, List, Tuple
@@ -127,9 +128,10 @@ def main():
         
         st.header("📋 Bulk Song Order")
         st.markdown("Paste your song order file content:")
+        st.caption("Just song names = uses sheet music order")
         bulk_order = st.text_area(
             "Song Order",
-            placeholder="Psalm 90: V1-V2-C-V3-C\nTrading My Sorrows: C-Va-C-Va-V",
+            placeholder="Example (just song names - uses PDF order):\nRock of Ages\nVictory In Jesus\nChristus Victor\n\nOr with custom order:\nPsalm 90: V1 V2 C V3 C\nTrading My Sorrows: C Va C Va V",
             height=150,
             label_visibility="collapsed",
             key="bulk_order_text"
@@ -143,15 +145,20 @@ def main():
                 
                 for line in bulk_order.strip().split('\n'):
                     song_name, order = parse_song_order_line(line)
-                    if song_name and order:
+                    if song_name:
                         # Find matching song in uploaded songs
                         for filename, song_data in list(unmatched_songs.items()):
                             if song_name.lower() in song_data['title'].lower() or \
                                song_data['title'].lower() in song_name.lower():
-                                song_data['order'] = order
+                                # If order is provided, use it; otherwise keep PDF order
+                                if order:
+                                    song_data['order'] = order
+                                    st.success(f"✓ {song_data['title']} (custom order)")
+                                else:
+                                    # Keep existing order (PDF order)
+                                    st.success(f"✓ {song_data['title']} (sheet music order)")
                                 ordered_songs[filename] = song_data
                                 del unmatched_songs[filename]
-                                st.success(f"Applied order to: {song_data['title']}")
                                 break
                 
                 # Add any remaining unmatched songs at the end
@@ -276,7 +283,7 @@ def main():
                     
                     # Edit order
                     st.markdown("**Section order:**")
-                    order_str = "-".join(song_data['order'])
+                    order_str = " ".join(song_data['order'])
                     new_order_str = st.text_input(
                         "Order",
                         value=order_str,
@@ -284,8 +291,8 @@ def main():
                         label_visibility="collapsed"
                     )
                     
-                    # Update order if changed
-                    new_order = [s.strip() for s in new_order_str.split('-') if s.strip()]
+                    # Update order if changed (supports both spaces and dashes)
+                    new_order = [s.strip() for s in re.split(r'[-\s]+', new_order_str) if s.strip()]
                     if new_order != song_data['order']:
                         st.session_state.songs[filename]['order'] = new_order
                     
@@ -476,11 +483,13 @@ def main():
                                         
                                         for line in st.session_state.bulk_order_text.strip().split('\n'):
                                             song_name, order = parse_song_order_line(line)
-                                            if song_name and order:
+                                            if song_name:
                                                 for filename, song_data in list(unmatched_songs.items()):
                                                     if song_name.lower() in song_data['title'].lower() or \
                                                        song_data['title'].lower() in song_name.lower():
-                                                        song_data['order'] = order
+                                                        # If order provided, use it; otherwise keep PDF order
+                                                        if order:
+                                                            song_data['order'] = order
                                                         ordered_songs[filename] = song_data
                                                         del unmatched_songs[filename]
                                                         break

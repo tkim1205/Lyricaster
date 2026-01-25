@@ -161,13 +161,13 @@ def add_song_slides(
                     'elementProperties': {
                         'pageObjectId': slide_id,
                         'size': {
-                            'width': {'magnitude': SLIDE_WIDTH - 914400, 'unit': 'EMU'},  # 0.5" padding each side
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
                             'height': {'magnitude': 800000, 'unit': 'EMU'}
                         },
                         'transform': {
                             'scaleX': 1,
                             'scaleY': 1,
-                            'translateX': 457200,  # 0.5" from left
+                            'translateX': 200000,
                             'translateY': title_y,
                             'unit': 'EMU'
                         }
@@ -227,14 +227,14 @@ def add_song_slides(
                     'elementProperties': {
                         'pageObjectId': slide_id,
                         'size': {
-                            'width': {'magnitude': SLIDE_WIDTH - 457200, 'unit': 'EMU'},  # 0.25" padding each side
-                            'height': {'magnitude': 3700000, 'unit': 'EMU'}  # Touches/slightly exceeds footer
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
+                            'height': {'magnitude': 3500000, 'unit': 'EMU'}
                         },
                         'transform': {
                             'scaleX': 1,
                             'scaleY': 1,
-                            'translateX': 228600,  # 0.25" from left
-                            'translateY': 1000000,  # Start higher
+                            'translateX': 200000,
+                            'translateY': 1200000,
                             'unit': 'EMU'
                         }
                     }
@@ -292,13 +292,13 @@ def add_song_slides(
                     'elementProperties': {
                         'pageObjectId': slide_id,
                         'size': {
-                            'width': {'magnitude': SLIDE_WIDTH - 914400, 'unit': 'EMU'},  # 0.5" padding each side
+                            'width': {'magnitude': SLIDE_WIDTH - 400000, 'unit': 'EMU'},
                             'height': {'magnitude': 400000, 'unit': 'EMU'}
                         },
                         'transform': {
                             'scaleX': 1,
                             'scaleY': 1,
-                            'translateX': 457200,  # 0.5" from left
+                            'translateX': 200000,
                             'translateY': SLIDE_HEIGHT - 500000,  # Near bottom
                             'unit': 'EMU'
                         }

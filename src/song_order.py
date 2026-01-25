@@ -1,5 +1,5 @@
 """
-Song Order Parser - Parse song order format like "V1-V2-C-V3-C-Va"
+Song Order Parser - Parse song order format like "V1 V2 C V3 C Va"
 """
 
 import re
@@ -9,59 +9,87 @@ from typing import List, Dict, Tuple
 def parse_song_order_line(line: str) -> Tuple[str, List[str]]:
     """
     Parse a single line from song_order.md
-    Input: "Trading My Sorrows: C-Va-C-Va-V-C-Va-V-C-Va-Va"
-    Output: ("Trading My Sorrows", ["C", "Va", "C", "Va", "V", "C", "Va", "V", "C", "Va", "Va"])
+    
+    Supported formats:
+    - "Trading My Sorrows: C Va C Va V" -> with explicit order
+    - "Trading My Sorrows" -> just song name, uses PDF order
+    
+    Returns: (song_name, order_list)
+    - If order_list is empty, use the PDF section order
+    
+    Note: Both spaces and dashes work as separators.
     """
     line = line.strip()
     if not line or line.startswith('#'):
         return None, []
     
-    # Split on colon or dash after song name
-    # Handle formats like:
-    # - "Song Name: V1-V2-C"
-    # - "Song Name - V1-V2-C" 
-    # - "Song Name V1-V2-C"
-    
-    # Try colon first
+    # Try colon first - explicit order format "Song Name: V1 C V2"
     if ':' in line:
         parts = line.split(':', 1)
         song_name = parts[0].strip()
         order_str = parts[1].strip()
-    else:
-        # Try to find where the order starts (first section marker)
-        match = re.search(r'\s+(V\d*|C|B|Va|PC|Intro|Outro|Tag)[-\s]', line, re.IGNORECASE)
-        if match:
-            song_name = line[:match.start()].strip()
-            order_str = line[match.start():].strip()
-        else:
-            return line, []
+        
+        # If nothing after colon, just return song name with empty order
+        if not order_str:
+            return song_name, []
+        
+        # Parse the order string
+        order_str = order_str.strip(' -')
+        sections = re.split(r'[-\s]+', order_str)
+        
+        # Clean and normalize section names
+        cleaned_sections = []
+        for s in sections:
+            s = s.strip()
+            if s:
+                s_upper = s.upper()
+                if s_upper == 'VERSE' or s_upper == 'V':
+                    s = 'V'
+                elif s_upper == 'CHORUS':
+                    s = 'C'
+                elif s_upper == 'BRIDGE':
+                    s = 'B'
+                elif s_upper == 'VAMP':
+                    s = 'Va'
+                elif s_upper.startswith('VERSE'):
+                    num = re.search(r'\d+', s)
+                    s = f"V{num.group() if num else ''}"
+                cleaned_sections.append(s)
+        
+        return song_name, cleaned_sections
     
-    # Parse the order string
-    # Split by dash, handling spaces
-    order_str = order_str.strip(' -')
-    sections = re.split(r'[-\s]+', order_str)
+    # No colon - check if line has section markers
+    match = re.search(r'\s+(V\d*|C|B|Va|PC|Intro|Outro|Tag)[-\s]', line, re.IGNORECASE)
+    if match:
+        # Has section markers - parse them
+        song_name = line[:match.start()].strip()
+        order_str = line[match.start():].strip()
+        
+        order_str = order_str.strip(' -')
+        sections = re.split(r'[-\s]+', order_str)
+        
+        cleaned_sections = []
+        for s in sections:
+            s = s.strip()
+            if s:
+                s_upper = s.upper()
+                if s_upper == 'VERSE' or s_upper == 'V':
+                    s = 'V'
+                elif s_upper == 'CHORUS':
+                    s = 'C'
+                elif s_upper == 'BRIDGE':
+                    s = 'B'
+                elif s_upper == 'VAMP':
+                    s = 'Va'
+                elif s_upper.startswith('VERSE'):
+                    num = re.search(r'\d+', s)
+                    s = f"V{num.group() if num else ''}"
+                cleaned_sections.append(s)
+        
+        return song_name, cleaned_sections
     
-    # Clean and normalize section names
-    cleaned_sections = []
-    for s in sections:
-        s = s.strip()
-        if s:
-            # Normalize common formats
-            s_upper = s.upper()
-            if s_upper == 'VERSE' or s_upper == 'V':
-                s = 'V'
-            elif s_upper == 'CHORUS':
-                s = 'C'
-            elif s_upper == 'BRIDGE':
-                s = 'B'
-            elif s_upper == 'VAMP':
-                s = 'Va'
-            elif s_upper.startswith('VERSE'):
-                num = re.search(r'\d+', s)
-                s = f"V{num.group() if num else ''}"
-            cleaned_sections.append(s)
-    
-    return song_name, cleaned_sections
+    # Just a song name - return with empty order (will use PDF order)
+    return line, []
 
 
 def parse_song_order_file(content: str) -> Dict[str, List[str]]:
@@ -136,8 +164,17 @@ def validate_order_against_sections(order: List[str], available_sections: Dict[s
 
 def create_default_order(sections: Dict[str, str]) -> List[str]:
     """
-    Create a default order from available sections.
-    Typically: V1, C, V2, C, V3, C, etc.
+    Create default order - uses the order sections appear in the PDF.
+    This preserves the sheet music order.
+    """
+    # Python 3.7+ dicts maintain insertion order, so just return the keys
+    return list(sections.keys())
+
+
+def create_interleaved_order(sections: Dict[str, str]) -> List[str]:
+    """
+    Create an interleaved order (V1, C, V2, C, etc.).
+    Use this if you want verses alternated with choruses.
     """
     verses = sorted([k for k in sections if k.startswith('V') and k != 'Va'])
     choruses = [k for k in sections if k == 'C']
